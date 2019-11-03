@@ -56,24 +56,67 @@ class Tiki :
                 if subTag.find_elements_by_tag_name('a') != []:
                     sub_link.append(subTag.find_elements_by_tag_name('a')[0].get_attribute('href'))
         return sub_link
-    def get_comments(self,url):
+    def get_comments(self,url,filesave_name):
         self.request_html(url)
+        self.driver.implicitly_wait(7)
         linkNX = self.driver.find_elements_by_class_name("-reviews-count")
         if linkNX != [] :
             totalNX = int(linkNX[0].text)
             linkNX[0].click()
             time.sleep(3)
             NX_Tag = self.driver.find_elements_by_class_name("review_detail")
+            comments = []
             if NX_Tag != [] :
-                for tag in NX_tag :
+                for tag in NX_Tag :
                     if tag.find_elements_by_tag_name('span') != []:
-                        print(tag.find_elements_by_tag_name('span')[0].text)
-
-            else :
-                print("no name")
+                        comments.append(tag.find_elements_by_tag_name("span")[0].text)
+                print(comments)
+                if comments != [] :
+                    self.save_data(filesave_name,comments)
+                    return 1
+                else :
+                    return 0
+            else:
+                return 0
             time.sleep(30)
         else :
             return 0
+    def save_data(self,filename,data):
+        with open(filename,"a",encoding = 'utf-8') as fw:
+            for x in data :
+                fw.write(b'"'.decode('utf-8') + x + b'",'.decode('utf-8') + "\n")
+        fw.close()
+    def auto_get_comments(self, link_sub_catagory):
+        self.request_html(link_sub_catagory)
+        self.driver.implicitly_wait(7)
+        sub_catagory_tag = self.driver.find_elements_by_class_name("filter-list-box")
+        file_name = ""
+        if sub_catagory_tag != []:
+            file_name = "data\\" + ''.join(re.findall('(\w+)',sub_catagory_tag[0].find_elements_by_tag_name('h1')[0].text)) + ".crash"
+        else :
+            return 0
+        print(file_name)
+        product_tag = self.driver.find_elements_by_class_name("product-item")
+        product_list_tag = []
+        if product_tag != []:
+            product_list_tag = product_tag[:47]
+        else :
+            return 0
+        link_products = [x.find_elements_by_tag_name('a')[0].get_attribute('href') for x in product_list_tag]
+        if link_products != []:
+            for link in link_products:
+                if link != None :
+                    self.get_comments(link,file_name)
+                    time.sleep(5)
+            return 1
+        else :
+            return 0
+
+    def close_driver(self):
+        print("program wil be turn off in 5 seconds")
+        time.sleep(5)
+        self.driver.quit()
+
 def save(file_name,Llink):
     tmp = json.dumps(Llink,indent = 4)
     with open(file_name, 'w',encoding = 'utf-8') as fw:
@@ -89,8 +132,20 @@ def read(file_name):
      
 def main():
     tiki = Tiki()
-    tiki.get_comments("https://tiki.vn/dien-thoai-samsung-galaxy-a10s-32gb-2gb-hang-chinh-hang-p25918805.html?src=category-page-1789.1795&2hi=0")
+    sub_catagories_link = read("sub_catagories.json")
     
-
+    collected_link = []
+    try :
+        collected_link = read("collected_link.crash")
+    except:
+        print("there is no link in that file! ")
+    for sub_catagory in sub_catagories_link:
+        if sub_catagory != [] :
+            for sub_link in sub_catagory:
+                if sub_link != [] and sub_link not in collected_link :
+                    i = tiki.auto_get_comments(sub_link)
+                    if i == 1 :
+                        save("collected_link",collected_link)
+    
 if __name__ == '__main__' :
     main()
