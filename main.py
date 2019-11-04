@@ -33,11 +33,11 @@ class Tiki :
                 break
             else :
                 last_height = new_height      
-        time.sleep(3)
+        time.sleep(2)
     def request_html(self,url):
         self.driver.get(url)
         self.driver.set_page_load_timeout(100)
-        #self.scroll()
+        self.scroll()
 
     def get_catagory(self,root):
         self.request_html(root)
@@ -61,7 +61,11 @@ class Tiki :
         self.driver.implicitly_wait(7)
         linkNX = self.driver.find_elements_by_class_name("-reviews-count")
         if linkNX != [] :
-            totalNX = int(linkNX[0].text)
+            try:
+                totalNX = int(linkNX[0].text)
+            except:
+                print("an error has been raised")
+                return 0
             linkNX[0].click()
             time.sleep(3)
             NX_Tag = self.driver.find_elements_by_class_name("review_detail")
@@ -106,7 +110,9 @@ class Tiki :
         if link_products != []:
             for link in link_products:
                 if link != None :
-                    self.get_comments(link,file_name)
+                    i = self.get_comments(link,file_name)
+                    if i == 0 :
+                        continue
                     time.sleep(5)
             return 1
         else :
@@ -132,6 +138,7 @@ def read(file_name):
      
 def main():
     tiki = Tiki()
+    #tiki.get_comments("https://tiki.vn/may-tinh-bang-masstel-tab-10-plus-hang-chinh-hang-p11627000.html?src=category-page-1789.1794&2hi=0","here.crash")
     sub_catagories_link = read("sub_catagories.json")
     
     collected_link = []
@@ -139,13 +146,14 @@ def main():
         collected_link = read("collected_link.crash")
     except:
         print("there is no link in that file! ")
+    print(collected_link)
     for sub_catagory in sub_catagories_link:
         if sub_catagory != [] :
             for sub_link in sub_catagory:
                 if sub_link != [] and sub_link not in collected_link :
                     i = tiki.auto_get_comments(sub_link)
-                    if i == 1 :
-                        save("collected_link",collected_link)
-    
+                    collected_link.append(sub_link)
+                    save("collected_link.crash",collected_link)
+    tiki.close_driver()
 if __name__ == '__main__' :
     main()
